@@ -1,0 +1,74 @@
+#-------------------------------------------------------------------------------
+# Name:        Email_Message_Permutator_WITH_WRITING_TO_FILE
+# Purpose:     Take a list of names and emails, and send them each a custom copy
+#              of a template email
+#
+# Author:      Alec McKinley
+#
+# Created:     01/29/2015
+# Copyright:   (c) Alec_McKinley 2015
+# Licence:     open source
+#-------------------------------------------------------------------------------
+import smtplib
+from smtplib import SMTPRecipientsRefused
+import datetime
+
+def FILE_SCRAPER(CONTACT_SOURCE_FILE):
+    sorted_name_and_email_array = []
+    source_document = open(CONTACT_SOURCE_FILE)
+    for line in source_document:
+        line.strip()
+        sorted_name_and_email_array.append(line.split())
+    for x in range(int(len(sorted_name_and_email_array))):
+        if int(len(sorted_name_and_email_array[x])) >= 4:
+            for y in range(1, int(len(sorted_name_and_email_array[x]))-2):
+                sorted_name_and_email_array[x].pop(1)
+    return sorted_name_and_email_array
+
+def SEND_EMAIL(LOGIN, PASSWORD, SENDER, RECIEVER, MESSAGE_TEMPLATE):
+    server = smtplib.SMTP('outlook.office365.com', 587)
+    server.set_debuglevel(1)
+    server.ehlo()
+    server.starttls()
+    server.login(LOGIN, PASSWORD)
+    server.sendmail(SENDER, RECIEVER, MESSAGE_TEMPLATE)
+    server.quit()
+
+def TIMESTAMP_FILE(FIRST_NAME, LAST_NAME, RECIEVER, FILE_TO_WRITE_TO):
+    today = datetime.datetime.now().strftime("%A, %d. %B %Y %I:%M%p")
+    timestamp = FIRST_NAME, LAST_NAME, RECIEVER, today
+    timestamp_string = str(' '.join(elem for elem in timestamp)+'\n')
+    FILE_LOCATION = open(FILE_TO_WRITE_TO, 'a+')
+    FILE_LOCATION.write(timestamp_string)
+    FILE_LOCATION.flush()
+    FILE_LOCATION.close()
+
+def EMP(ARRAY):
+    LOGIN = raw_input('What is your email address you would like to send from? ')
+    PASSWORD = raw_input('What is your password? ')
+    SENDER = LOGIN
+    RECIEVER = str()
+    FIRST_NAME = str()
+    LAST_NAME = str()
+    SUBJECT = str()
+    today = datetime.datetime.now().strftime("%A_%d_%B_%p")
+    FILE_TO_WRITE_TO =('emails_sent_'+str(''.join(elem for elem in today))+'.text')
+    for x in range(len(ARRAY)):
+        FIRST_NAME = ARRAY[x][0]
+        LAST_NAME = ARRAY[x][1]
+        RECIEVER = ARRAY[x][2]
+        TEMPLATE_FILE = open('message_template_file.text')
+        MESSAGE_TEMPLATE = str()
+        SUBJECT = str("ATTN:{0} {1} - *****MESSAGE FOR SUBJECT HERE*****" .format(FIRST_NAME, LAST_NAME))
+        MESSAGE_TEMPLATE = str("From: {0}\r\nTo: {1}\r\nSubject: {2}\r\n\r\n" .format(SENDER, RECIEVER, SUBJECT))
+        MESSAGE_TEMPLATE = MESSAGE_TEMPLATE + '{0}, \n\n' .format(FIRST_NAME)
+        for line in TEMPLATE_FILE:
+            MESSAGE_TEMPLATE = MESSAGE_TEMPLATE + line
+        try:
+            SEND_EMAIL(LOGIN, PASSWORD, SENDER, RECIEVER, MESSAGE_TEMPLATE)
+            TIMESTAMP_FILE(FIRST_NAME, LAST_NAME, RECIEVER, FILE_TO_WRITE_TO)
+        except SMTPRecipientsRefused:
+            failure_notice = 'DELIVERY_FAILED--'+FIRST_NAME
+            TIMESTAMP_FILE(failure_notice, LAST_NAME, RECIEVER, FILE_TO_WRITE_TO)
+
+EMP(FILE_SCRAPER('recipient_name_and_email_list.text'))
